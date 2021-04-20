@@ -12,13 +12,10 @@ router.get("/fetch-customers/more-than-5",  (req, res) => {
       return { success: false, error: err };
     }
     
-
     client.db('customers-data').collection('customers').find({ orders_count: { $gt: 5 } })
     .limit(20)
     .toArray(function(err, results) {
       if(err) res.send(err);
-
-      console.log(results);
       res.send(results);
     });
 
@@ -39,17 +36,25 @@ router.get("/fetch-customers/starts-with-man-no-order", (req, res) => {
     // Getting millisecond time of 30 days back from now
     const date_ms = today.getTime() - 30 * 24 * 60 * 60 * 1000; 
 
-    const utc_prior_date = (new Date(date_ms)).toUTCString();
-
-    client.db('customers-data').collection('customers').find({ first_name: { $regex : /^Man/ }, last_order_date: { $lt: utc_prior_date } })
+    client.db('customers-data').collection('customers').find({ first_name: { $regex : /^Man/ }})
     .limit(20)
     .toArray(function(err, results) {
       if(err) res.send(err);
 
-      console.log(results);
-      res.send(results);
-    });
+      let filtered_data = [];
+      results.map(val => {
+        let last_order_date = val['last_order_date'];
+        let temp = new Date(last_order_date).getTime();
+        //If last_order_date is less than date_ms, then we can include it in our result
+        if(temp < date_ms) {
+          filtered_data.push(val);
+        }
+      });
 
+      res.send(filtered_data);
+
+    });
+    
     client.close();
   });
 });
@@ -66,15 +71,24 @@ router.get("/fetch-customers/more-than-5-no-order", (req, res) => {
     // Getting millisecond time of 30 days back from now
     const date_ms = today.getTime() - 30 * 24 * 60 * 60 * 1000; 
 
-    const utc_prior_date = (new Date(date_ms)).toUTCString();
+    // const utc_prior_date = (new Date(date_ms));
+    // console.log(new Date("2021-03-21T00:00:00.000Z"));
 
-    client.db('customers-data').collection('customers').find({ last_order_date: { $lt: utc_prior_date }, orders_count: { $gt: 5 }})
+    client.db('customers-data').collection('customers').find({ orders_count: { $gt: 5 }})
     .limit(20)
     .toArray(function(err, results) {
       if(err) res.send(err);
 
-      console.log(results);
-      res.send(results);
+      let filtered_data = [];
+      results.map(val => {
+        let last_order_date = val['last_order_date'];
+        let temp = new Date(last_order_date).getTime();
+        if(temp < date_ms) {
+          filtered_data.push(val);
+        }
+      })
+
+      res.send(filtered_data);
     });
 
     client.close();
@@ -201,7 +215,7 @@ router.post("/post-customers", (req, res) => {
         }
       },
       function(err) {
-        if (err) throw err;
+        if (err) res.send({success: false, error: err});
         console.log("Data uploaded successfully!");
       }
     );
